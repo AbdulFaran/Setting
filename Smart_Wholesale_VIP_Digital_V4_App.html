@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Wholesale VIP Digital V3</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--ink:#172033;--muted:#687386;--pri:#2563eb;--pri2:#1d4ed8;--ok:#059669;--danger:#dc2626;--line:#e5e7eb}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,#0f172a,#1e40af);color:#fff;padding:18px 22px;position:sticky;top:0;z-index:5;box-shadow:0 5px 20px #0002}
+.brand{font-size:22px;font-weight:800}.sub{font-size:12px;opacity:.75;margin-top:3px}
+nav{display:flex;gap:7px;overflow:auto;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:4}
+nav button{border:0;background:#eef2ff;color:#1e3a8a;padding:9px 12px;border-radius:10px;white-space:nowrap;font-weight:700;cursor:pointer}
+nav button.active{background:var(--pri);color:#fff}
+main{max-width:1400px;margin:auto;padding:18px}.view{display:none}.view.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px;box-shadow:0 3px 12px #00000008}
+.kpi{font-size:25px;font-weight:800;margin-top:5px}.label{color:var(--muted);font-size:12px;font-weight:700}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.row2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #d7dce5;border-radius:9px;background:#fff;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--pri);box-shadow:0 0 0 3px #2563eb18}
+label{font-size:12px;font-weight:700;color:#4b5563;display:block;margin-bottom:5px}
+button{cursor:pointer}.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:800;background:var(--pri);color:#fff}.btn:hover{background:var(--pri2)}
+.btn.ok{background:var(--ok)}.btn.red{background:var(--danger)}.btn.gray{background:#64748b}.btn.light{background:#e8eefc;color:#1e3a8a}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left}th{background:#f8fafc;color:#475569}
+h2{margin:0 0 12px}.section{margin-bottom:16px}.empty{padding:25px;text-align:center;color:var(--muted)}
+.toast{position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;padding:12px 15px;border-radius:10px;display:none;z-index:20;max-width:360px}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:15px;z-index:15}.modalbox{background:#fff;border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:20px}
+.small{font-size:12px;color:var(--muted)}.pill{display:inline-block;padding:4px 8px;border-radius:99px;background:#eef2ff;color:#1e40af;font-size:11px;font-weight:800}
+.printnote{font-size:10px;border-top:1px solid #111;padding-top:7px;margin-top:12px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){main{padding:10px}.grid,.row,.row2{grid-template-columns:1fr}.brand{font-size:18px}nav{top:70px}}
+@media print{header,nav,.no-print{display:none!important}body{background:#fff}.view{display:none!important}.view.printing{display:block!important}main{padding:0}.card{box-shadow:none;border:0}}
+</style>
+</head>
+<body>
+<header><div class="brand">Smart Wholesale VIP Digital V3</div><div class="sub">AI Assistant • Voice Commands • Billing • Recovery • Inventory • Refund Protection</div><button class="btn" style="margin-top:10px" onclick="voiceCommand()">🎤 Speak Command</button></header>
+<nav id="nav"></nav>
+<main>
+<section id="dashboard" class="view active"></section>
+<section id="billing" class="view"></section>
+<section id="customers" class="view"></section>
+<section id="products" class="view"></section>
+<section id="purchases" class="view"></section>
+<section id="recovery" class="view"></section>
+<section id="adjustments" class="view"></section><section id="refunds" class="view"></section>
+<section id="companies" class="view"></section>
+<section id="reports" class="view"></section>
+<section id="settings" class="view"></section>
+</main>
+<div id="toast" class="toast"></div>
+<div id="modal" class="modal"><div id="modalbox" class="modalbox"></div></div>
+<script>
+const KEY='sw_vip_v3_state';
+const defaultState={version:4,settings:{shopName:'My Wholesale Company',print1:'Customer Copy',print2:'Office Copy',adminPin:'1234',aiEndpoint:'',aiKey:''},customers:[],products:[],companies:[],salesmen:[],bills:[],recoveries:[],adjustments:[],purchases:[],companyPayments:[],refunds:[]};
+let S=loadState(), cart=[];
+
+function loadState(){
+ try{let x=JSON.parse(localStorage.getItem(KEY)); if(x&&(x.version===3||x.version===4)){if(x.version===3){x.version=4;x.settings=x.settings||{};x.settings.adminPin='1234';x.settings.aiEndpoint='';x.settings.aiKey='';x.refunds=[];}return x}}catch(e){}
+ return structuredClone(defaultState);
+}
+function persist(next){
+ const copy=JSON.parse(JSON.stringify(next));
+ localStorage.setItem(KEY,JSON.stringify(copy));
+ const check=JSON.parse(localStorage.getItem(KEY));
+ if(!check||check.version!==4)throw new Error('Storage verification failed');
+ S=check; return true;
+}
+function save(action, validator){
+ try{
+   if(validator && !validator()) return false;
+   persist(S); toast('✓ '+action+' saved successfully');
+   render(); return true;
+ }catch(e){toast('Save failed: '+e.message+' — data form محفوظ ہے، دوبارہ کوشش کریں'); return false}
+}
+function id(p){return p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)}
+function money(n){return 'Rs. '+Number(n||0).toLocaleString('en-PK',{maximumFractionDigits:2})}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2600)}
+function navTo(x){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(x).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===x));renderView(x)}
+const navItems=[['dashboard','Dashboard'],['billing','Billing'],['customers','Customers'],['products','Products'],['purchases','Purchases'],['recovery','Recovery'],['adjustments','Adjustments'],['refunds','Refunds / Edit Bill'],['companies','Company Khata'],['reports','Reports'],['settings','Settings']];
+document.getElementById('nav').innerHTML=navItems.map(x=>`<button data-v="${x[0]}" onclick="navTo('${x[0]}')">${x[1]}</button>`).join('');
+
+function render(){renderView(document.querySelector('.view.active')?.id||'dashboard')}
+function renderView(v){
+ const f={dashboard:dashboard,billing:billing,customers:customers,products:products,purchases:purchases,recovery:recovery,adjustments:adjustments,refunds:refunds,companies:companies,reports:reports,settings:settings}[v]; if(f)document.getElementById(v).innerHTML=f();
+}
+function totals(){
+ let sales=S.bills.reduce((a,b)=>a+Number(b.total||0),0);
+ let rec=S.recoveries.reduce((a,b)=>a+Number(b.amount||0),0);
+ let adj=S.adjustments.reduce((a,b)=>a+(b.type==='plus'?Number(b.amount):-Number(b.amount)),0);
+ return {sales,rec,adj,out:sales-rec+adj,stock:S.products.reduce((a,p)=>a+Number(p.stock||0),0)};
+}
+function dashboard(){let t=totals();return `<div class="section"><h2>Business Dashboard</h2><div class="grid">
+${[['Today Sales',money(t.sales)],['Today Recovery',money(t.rec)],['Market Outstanding',money(t.out)],['Current Stock Units',t.stock]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('')}</div></div>
+<div class="card"><h2>Quick Actions</h2><div class="actions"><button class="btn" onclick="navTo('billing')">+ New Bill</button><button class="btn ok" onclick="navTo('recovery')">+ Recovery</button><button class="btn light" onclick="navTo('customers')">+ Customer</button><button class="btn light" onclick="navTo('products')">+ Product</button><button class="btn gray" onclick="navTo('reports')">Monthly Reports</button><button class="btn" onclick="voiceCommand()">🎤 Voice Command</button></div></div>`}
+
+function billing(){
+let custOpts=S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+let prodOpts=S.products.map(p=>`<option value="${p.id}">${esc(p.name)} — ${money(p.sale)}</option>`).join('');
+let smOpts=S.salesmen.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+return `<div class="card"><h2>New Bill</h2><div class="row">
+<div><label>Customer</label><select id="bCust"><option value="">Select</option>${custOpts}</select></div>
+<div><label>Order Booker / Salesman</label><select id="bSm"><option value="">Select</option>${smOpts}</select></div>
+<div><label>Date</label><input id="bDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+<div><label>Discount %</label><input id="bDisc" type="number" min="0" step=".01" value="0"></div></div>
+<div class="row" style="margin-top:10px"><div><label>Product</label><select id="bProd"><option value="">Select</option>${prodOpts}</select></div><div><label>Qty</label><input id="bQty" type="number" min="1" value="1"></div><div><label>Unit</label><select id="bUnit"><option>Piece</option><option>Box</option><option>Bonus</option></select></div><div><label>Bonus Qty</label><input id="bBonus" type="number" min="0" value="0"></div></div>
+<div class="actions"><button class="btn" onclick="addCart()">Add Item</button><button class="btn gray" onclick="clearCart()">Clear Items</button></div>
+<div id="cartTable">${cartHtml()}</div>
+<div class="row2"><div><label>Recovery on this bill</label><input id="bRec" type="number" min="0" value="0"></div><div><label>Adjustment (+/-)</label><input id="bAdj" type="number" value="0"></div></div>
+<div class="actions"><button class="btn ok" onclick="saveBill()">SAVE BILL</button><button class="btn light" onclick="printCurrentBill()">Preview/Print Last Bill</button></div></div>`}
+function cartHtml(){if(!cart.length)return '<div class="empty">No items added.</div>';return `<table><tr><th>Product</th><th>Qty</th><th>Bonus</th><th>Rate</th><th>Total</th><th></th></tr>${cart.map((x,i)=>`<tr><td>${esc(x.name)}</td><td>${x.qty} ${esc(x.unit)}</td><td>${x.bonus}</td><td>${money(x.rate)}</td><td>${money(x.total)}</td><td><button class="btn red" onclick="cart.splice(${i},1);renderView('billing')">×</button></td></tr>`).join('')}</table>`}
+function addCart(){let p=S.products.find(x=>x.id===document.getElementById('bProd').value),q=+document.getElementById('bQty').value,b=+document.getElementById('bBonus').value;if(!p||q<=0)return toast('Product and quantity required');let total=q*Number(p.sale);cart.push({productId:p.id,name:p.name,qty:q,bonus:b,unit:document.getElementById('bUnit').value,rate:Number(p.sale),total});renderView('billing');toast('Item added')}
+function clearCart(){cart=[];renderView('billing')}
+function saveBill(){
+ if(!cart.length)return toast('Add at least one item');
+ let cid=document.getElementById('bCust').value, sid=document.getElementById('bSm').value;
+ if(!cid)return toast('Select customer'); if(!sid)return toast('Select salesman/order booker');
+ let disc=+document.getElementById('bDisc').value||0, subtotal=cart.reduce((a,x)=>a+x.total,0), total=subtotal*(1-disc/100), rec=+document.getElementById('bRec').value||0, adj=+document.getElementById('bAdj').value||0;
+ let bill={id:id('bill'),no:'B-'+Date.now(),date:document.getElementById('bDate').value,customerId:cid,salesmanId:sid,items:JSON.parse(JSON.stringify(cart)),subtotal,discountPct:disc,total,recovery:rec,adjustment:adj,createdAt:new Date().toISOString()};
+ S.bills.push(bill);
+ bill.items.forEach(it=>{let p=S.products.find(x=>x.id===it.productId);if(p)p.stock=Math.max(0,Number(p.stock||0)-it.qty-it.bonus)});
+ if(rec>0)S.recoveries.push({id:id('rec'),date:bill.date,customerId:cid,salesmanId:sid,amount:rec,method:'Bill Recovery',billId:bill.id});
+ if(adj)S.adjustments.push({id:id('adj'),date:bill.date,customerId:cid,salesmanId:sid,amount:Math.abs(adj),type:adj>0?'plus':'minus',note:'Bill adjustment',billId:bill.id});
+ if(save('Bill')){cart=[];toast('✓ Bill saved and stock updated')}
+}
+function printCurrentBill(){let b=S.bills.at(-1);if(!b)return toast('No saved bill');openPrint(b,S.settings.print1)}
+function openPrint(b,copyName){
+let c=S.customers.find(x=>x.id===b.customerId)?.name||'', sm=S.salesmen.find(x=>x.id===b.salesmanId)?.name||'';
+let html=`<div style="font-family:Arial;max-width:760px;margin:auto"><h2>${esc(S.settings.shopName)}</h2><h3>${esc(copyName)}</h3><p>Bill: ${b.no} | Date: ${b.date}<br>Customer: ${esc(c)} | Salesman: ${esc(sm)}</p><table style="width:100%;border-collapse:collapse"><tr><th>Product</th><th>Qty</th><th>Bonus</th><th>Rate</th><th>Total</th></tr>${b.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${i.bonus}</td><td>${money(i.rate)}</td><td>${money(i.total)}</td></tr>`).join('')}</table><h3>Total: ${money(b.total)}</h3><p>Previous Balance: — &nbsp; Recovery: ${money(b.recovery)} &nbsp; Adjustment: ${money(b.adjustment)}</p><p><b>Current Outstanding: calculated from customer ledger</b></p><div style="font-size:11px;border-top:1px solid #111;padding-top:8px">Important Notice: Customer/company transactions are separate. Any personal transaction with a salesman is the responsibility of the concerned parties. The company will not be responsible for such personal transactions.</div></div>`;
+let w=window.open('','_blank');w.document.write(html);w.document.close();w.print();
+}
+function customers(){return `<div class="card"><h2>Customers</h2><div class="row"><div><label>Name</label><input id="cName"></div><div><label>Phone</label><input id="cPhone"></div><div><label>Address</label><input id="cAddr"></div><div><label>Opening Balance</label><input id="cOpen" type="number" value="0"></div></div><div class="actions"><button class="btn ok" onclick="addCustomer()">SAVE CUSTOMER</button></div>${S.customers.length?`<table><tr><th>Name</th><th>Phone</th><th>Opening</th><th></th></tr>${S.customers.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${money(c.open)}</td><td><button class="btn red" onclick="del('customers','${c.id}')">Delete</button></td></tr>`).join('')}</table>`:'<div class="empty">No customers yet.</div>'}</div>`}
+function addCustomer(){let n=document.getElementById('cName').value.trim();if(!n)return toast('Customer name required');if(S.customers.some(c=>c.name.toLowerCase()===n.toLowerCase()))return toast('Duplicate customer');S.customers.push({id:id('c'),name:n,phone:document.getElementById('cPhone').value.trim(),address:document.getElementById('cAddr').value.trim(),open:+document.getElementById('cOpen').value||0});save('Customer')}
+function products(){return `<div class="card"><h2>Products / Inventory</h2><div class="row"><div><label>Product</label><input id="pName"></div><div><label>Company</label><select id="pCo"><option value="">Select</option>${S.companies.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div><div><label>Purchase Price</label><input id="pBuy" type="number" value="0"></div><div><label>Sale Price</label><input id="pSale" type="number" value="0"></div></div><div class="row" style="margin-top:10px"><div><label>Opening Stock</label><input id="pStock" type="number" value="0"></div><div><label>SKU / Barcode</label><input id="pSku"></div></div><div class="actions"><button class="btn ok" onclick="addProduct()">SAVE PRODUCT</button></div>${S.products.length?`<table><tr><th>Product</th><th>Company</th><th>Buy</th><th>Sale</th><th>Stock</th><th></th></tr>${S.products.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(S.companies.find(c=>c.id===p.companyId)?.name||'—')}</td><td>${money(p.buy)}</td><td>${money(p.sale)}</td><td>${p.stock}</td><td><button class="btn red" onclick="del('products','${p.id}')">Delete</button></td></tr>`).join('')}</table>`:'<div class="empty">No products yet.</div>'}</div>`}
+function addProduct(){let n=document.getElementById('pName').value.trim();if(!n)return toast('Product name required');S.products.push({id:id('p'),name:n,companyId:document.getElementById('pCo').value,buy:+document.getElementById('pBuy').value||0,sale:+document.getElementById('pSale').value||0,stock:+document.getElementById('pStock').value||0,sku:document.getElementById('pSku').value.trim()});save('Product')}
+function purchases(){return `<div class="card"><h2>Purchase Entry</h2><div class="row"><div><label>Company</label><select id="puCo"><option value="">Select</option>${S.companies.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div><div><label>Product</label><select id="puPr">${S.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div><div><label>Qty</label><input id="puQty" type="number" value="1"></div><div><label>Rate</label><input id="puRate" type="number" value="0"></div></div><div class="actions"><button class="btn ok" onclick="addPurchase()">SAVE PURCHASE</button></div></div>`}
+function addPurchase(){if(!requirePin('Inventory / Purchase Adjustment'))return;let co=document.getElementById('puCo').value,pid=document.getElementById('puPr').value,q=+document.getElementById('puQty').value,r=+document.getElementById('puRate').value;if(!co||!pid||q<=0)return toast('Company, product and quantity required');S.purchases.push({id:id('pu'),date:new Date().toISOString().slice(0,10),companyId:co,productId:pid,qty:q,rate:r,total:q*r});let p=S.products.find(x=>x.id===pid);if(p){p.stock=Number(p.stock||0)+q;if(r)p.buy=r}save('Purchase')}
+function recovery(){let co=S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join(''),sm=S.salesmen.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');return `<div class="card"><h2>Recovery / Payment Received</h2><div class="row"><div><label>Customer</label><select id="rCust"><option value="">Select</option>${co}</select></div><div><label>Salesman</label><select id="rSm"><option value="">Select</option>${sm}</select></div><div><label>Amount</label><input id="rAmt" type="number" value="0"></div><div><label>Method</label><select id="rMethod"><option>Cash</option><option>Bank</option><option>Online</option><option>Cheque</option></select></div></div><div class="actions"><button class="btn ok" onclick="addRecovery()">SAVE RECOVERY</button></div><table><tr><th>Date</th><th>Customer</th><th>Salesman</th><th>Amount</th><th>Method</th></tr>${S.recoveries.slice(-30).reverse().map(r=>`<tr><td>${r.date}</td><td>${esc(S.customers.find(c=>c.id===r.customerId)?.name||'')}</td><td>${esc(S.salesmen.find(x=>x.id===r.salesmanId)?.name||'')}</td><td>${money(r.amount)}</td><td>${esc(r.method)}</td></tr>`).join('')}</table></div>`}
+function addRecovery(){let c=document.getElementById('rCust').value,s=document.getElementById('rSm').value,a=+document.getElementById('rAmt').value;if(!c||!s||a<=0)return toast('Customer, salesman and amount required');S.recoveries.push({id:id('r'),date:new Date().toISOString().slice(0,10),customerId:c,salesmanId:s,amount:a,method:document.getElementById('rMethod').value});save('Recovery')}
+function adjustments(){return `<div class="card"><h2>Customer Adjustment</h2><div class="row"><div><label>Customer</label><select id="aCust">${S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div><div><label>Type</label><select id="aType"><option value="plus">Plus</option><option value="minus">Minus</option></select></div><div><label>Amount</label><input id="aAmt" type="number" value="0"></div><div><label>Reason</label><input id="aNote"></div></div><div class="actions"><button class="btn ok" onclick="addAdj()">SAVE ADJUSTMENT</button></div></div>`}
+function addAdj(){let a=+document.getElementById('aAmt').value;if(a<=0)return toast('Amount required');if(!requirePin('Customer Adjustment'))return;S.adjustments.push({id:id('a'),date:new Date().toISOString().slice(0,10),customerId:document.getElementById('aCust').value,type:document.getElementById('aType').value,amount:a,note:document.getElementById('aNote').value});save('Adjustment')}
+
+function refunds(){
+ let rows=S.bills.slice().reverse().map(b=>`<tr><td>${esc(b.no)}</td><td>${b.date}</td><td>${esc(S.customers.find(c=>c.id===b.customerId)?.name||'')}</td><td>${money(b.total)}</td><td><button class="btn red" onclick="refundBill('${b.id}')">REFUND</button></td></tr>`).join('');
+ return `<div class="card"><h2>Refund / Edit Bill</h2><p class="small">Refunding a bill requires Admin PIN. Stock is returned and the customer's account is reversed.</p><table><tr><th>Bill</th><th>Date</th><th>Customer</th><th>Total</th><th>Action</th></tr>${rows||'<tr><td colspan="5" class="empty">No bills yet.</td></tr>'}</table></div>`;
+}
+function refundBill(bid){
+ if(!requirePin('Refund / Bill Correction'))return;
+ let b=S.bills.find(x=>x.id===bid); if(!b)return;
+ if(S.refunds.some(x=>x.billId===bid))return toast('This bill is already refunded');
+ b.items.forEach(it=>{let p=S.products.find(x=>x.id===it.productId);if(p)p.stock=Number(p.stock||0)+Number(it.qty||0)+Number(it.bonus||0)});
+ S.refunds.push({id:id('refund'),billId:bid,date:new Date().toISOString().slice(0,10),customerId:b.customerId,amount:b.total,reason:'Bill refunded'});
+ b.refunded=true;
+ if(b.recovery>0)S.recoveries.push({id:id('rec'),date:new Date().toISOString().slice(0,10),customerId:b.customerId,salesmanId:b.salesmanId,amount:-Number(b.recovery),method:'Refund reversal',billId:bid});
+ save('Refund / Bill Correction');
+}
+
+function companies(){return `<div class="card"><h2>Company / Supplier Khata</h2><div class="row"><div><label>Company Name</label><input id="coName"></div><div><label>Phone</label><input id="coPhone"></div><div><label>Address</label><input id="coAddr"></div></div><div class="actions"><button class="btn ok" onclick="addCompany()">SAVE COMPANY</button></div>${S.companies.map(c=>`<div class="card" style="margin-top:10px"><b>${esc(c.name)}</b><div class="small">${esc(c.phone)}</div><div class="actions"><button class="btn red" onclick="del('companies','${c.id}')">Delete</button></div></div>`).join('')}</div>`}
+function addCompany(){let n=document.getElementById('coName').value.trim();if(!n)return toast('Company name required');S.companies.push({id:id('co'),name:n,phone:document.getElementById('coPhone').value,address:document.getElementById('coAddr').value});save('Company')}
+function reports(){let sales=S.bills.reduce((a,b)=>a+b.total,0),rec=S.recoveries.reduce((a,b)=>a+b.amount,0);let sm=S.salesmen.map(x=>{let bs=S.bills.filter(b=>b.salesmanId===x.id),rs=S.recoveries.filter(r=>r.salesmanId===x.id);return `<tr><td>${esc(x.name)}</td><td>${bs.length}</td><td>${money(bs.reduce((a,b)=>a+b.total,0))}</td><td>${money(rs.reduce((a,b)=>a+b.amount,0))}</td><td>${money(bs.reduce((a,b)=>a+b.total,0)-rs.reduce((a,b)=>a+b.amount,0))}</td></tr>`}).join('');return `<div class="card"><h2>Reports</h2><div class="grid"><div class="card"><div class="label">Total Sale</div><div class="kpi">${money(sales)}</div></div><div class="card"><div class="label">Total Recovery</div><div class="kpi">${money(rec)}</div></div><div class="card"><div class="label">Outstanding</div><div class="kpi">${money(sales-rec)}</div></div><div class="card"><div class="label">Salesmen</div><div class="kpi">${S.salesmen.length}</div></div></div><h3>Salesman Performance</h3><table><tr><th>Salesman</th><th>Bills</th><th>Sale</th><th>Recovery</th><th>Outstanding</th></tr>${sm||'<tr><td colspan="5" class="empty">Add salesmen from Settings.</td></tr>'}</table><div class="actions"><button class="btn gray" onclick="printReport()">Print Report</button><button class="btn light" onclick="speakReport()">🔊 Voice Report</button></div></div>`}
+function printReport(){let el=document.getElementById('reports');el.classList.add('printing');window.print();setTimeout(()=>el.classList.remove('printing'),500)}
+function speakReport(){let t=totals();let txt=`Business report. Total sale ${t.sales} rupees. Total recovery ${t.rec} rupees. Market outstanding ${t.out} rupees.`;if('speechSynthesis'in window)speechSynthesis.speak(new SpeechSynthesisUtterance(txt));else toast('Voice not supported')}
+function settings(){return `<div class="card"><h2>Settings</h2><div class="row"><div><label>Shop / Company Name</label><input id="sShop" value="${esc(S.settings.shopName)}"></div><div><label>Print 1 Name</label><input id="sP1" value="${esc(S.settings.print1)}"></div><div><label>Print 2 Name</label><input id="sP2" value="${esc(S.settings.print2)}"></div><div><label>Admin PIN</label><input id="sPin" type="password" value="${esc(S.settings.adminPin||'1234')}"></div><div><label>AI Endpoint (optional)</label><input id="sAI" value="${esc(S.settings.aiEndpoint||'')}"></div><div><label>Salesman / Order Booker Name</label><input id="smName"></div></div><div class="actions"><button class="btn ok" onclick="saveSettings()">SAVE SETTINGS</button><button class="btn light" onclick="addSalesman()">ADD SALESMAN</button><button class="btn gray" onclick="backup()">BACKUP JSON</button><button class="btn" onclick="document.getElementById('restore').click()">RESTORE JSON</button><input id="restore" type="file" accept=".json" hidden onchange="restore(event)"></div><h3>Salesmen</h3>${S.salesmen.map(x=>`<span class="pill" style="margin:4px">${esc(x.name)}</span>`).join(' ')}</div>`}
+function saveSettings(){S.settings={...S.settings,shopName:document.getElementById('sShop').value.trim()||'My Wholesale Company',print1:document.getElementById('sP1').value.trim()||'Customer Copy',print2:document.getElementById('sP2').value.trim()||'Office Copy',adminPin:document.getElementById('sPin').value.trim()||'1234',aiEndpoint:document.getElementById('sAI').value.trim()};save('Settings')}
+function addSalesman(){let n=document.getElementById('smName').value.trim();if(!n)return toast('Enter salesman name');S.salesmen.push({id:id('sm'),name:n});save('Salesman')}
+function backup(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='smart-wholesale-v3-backup.json';a.click();URL.revokeObjectURL(a.href);toast('Backup exported')}
+function restore(ev){let f=ev.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(x.version!==4)throw Error('Invalid V4 backup');persist(x);toast('Backup restored');render()}catch(e){toast('Restore failed: '+e.message)}};r.readAsText(f)}
+function del(k,i){if(!confirm('Delete this record?'))return;S[k]=S[k].filter(x=>x.id!==i);save('Record')}
+
+function requirePin(reason, cb){
+  let pin=prompt('ADMIN PIN required for '+reason);
+  if(pin===null)return false;
+  if(String(pin)!==String(S.settings.adminPin||'1234')){toast('Wrong Admin PIN');return false;}
+  cb&&cb(); return true;
+}
+function adminLogin(){
+  let pin=prompt('Enter Admin PIN to open Smart Wholesale');
+  if(String(pin)!==String(S.settings.adminPin||'1234')){document.body.innerHTML='<div style="font-family:Arial;padding:40px;text-align:center"><h2>🔒 Admin Login Required</h2><p>Wrong PIN. Reload the app and try again.</p></div>';return;}
+  sessionStorage.setItem('sw_admin_ok','1'); location.reload();
+}
+function ensureLogin(){
+  if(sessionStorage.getItem('sw_admin_ok')==='1')return;
+  document.body.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#eef2ff;font-family:Arial"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 15px 50px #0002;text-align:center;max-width:420px;width:90%"><div style="font-size:50px">🔐</div><h1>Smart Wholesale VIP</h1><p>Admin login required</p><button class="btn" onclick="adminLogin()">OPEN ADMIN PANEL</button><p style="font-size:12px;color:#64748b;margin-top:18px">Default first-run PIN: 1234. Change it from Settings.</p></div></div>`;
+  throw new Error('Admin login required');
+}
+function voiceCommand(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return toast('Voice recognition is not supported in this browser');
+  const r=new SR(); r.lang='en-US'; r.interimResults=false; r.maxAlternatives=1;
+  toast('🎤 Listening...');
+  r.onresult=e=>{let q=e.results[0][0].transcript.toLowerCase();toast('Heard: '+q);
+    if(/dashboard|home/.test(q))navTo('dashboard');
+    else if(/bill|billing|sale/.test(q))navTo('billing');
+    else if(/customer|shopkeeper/.test(q))navTo('customers');
+    else if(/product|inventory|stock/.test(q))navTo('products');
+    else if(/recovery|payment/.test(q))navTo('recovery');
+    else if(/refund|return|wrong bill|edit bill/.test(q))navTo('refunds');
+    else if(/report/.test(q))navTo('reports');
+    else if(/setting/.test(q))navTo('settings');
+    else toast('Command not recognized');
+  };
+  r.onerror=()=>toast('Voice input failed');
+  r.start();
+}
+
+ensureLogin();
+render();
+</script>
+</body>
+</html>
